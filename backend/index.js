@@ -1,12 +1,6 @@
-//code from https://www.djamware.com/post/68a6a3707c93f30ea29f62ac/build-a-realtime-chat-app-with-react-nodejs-and-socketio#create-project
+//initial code from https://www.djamware.com/post/68a6a3707c93f30ea29f62ac/build-a-realtime-chat-app-with-react-nodejs-and-socketio#create-project
 require("dotenv").config();
-
-console.log(
-    "OPENAI_API_KEY loaded:",
-    process.env.OPENAI_API_KEY
-        ? process.env.OPENAI_API_KEY.slice(0, 7) + "..."
-        : " NOT FOUND"
-);
+const { v4: uuidv4 } = require("uuid");
 
 // server/index.js
 const express = require("express");
@@ -27,12 +21,40 @@ const io = new Server(server, {
 });
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-let chatHistory = [];
-let messagesSinceLastIntervention = 0;
 const AI_RESPONSE_THRESHOLD = 3;
 
+const sessions = {};
+const colours = [
+    "Red", "Blue", "Green", "Yellow"
+];
 
-async function streamAIResponse() {
+app.get("/transcript/:sessionId", (req, res) => {
+    const { sessionId } = req.params;
+    const session = sessions[sessionId];
+
+    if (!session) {
+        return res.status(404).send("Session not found");
+    }
+
+    let transcript = `Session ID: ${sessionId}\n\nParticipants:\n`;
+
+    Object.values(session.participants).forEach(name => {
+        transcript += `- ${name}\n`;
+    });
+
+    transcript += "\n--- Transcript ---\n\n";
+
+    session.messages.forEach(msg => {
+        transcript += `[${msg.timestamp}] ${msg.sender}: ${msg.content}\n`;
+    });
+
+    res.setHeader("Content-disposition", `attachment; filename=transcript-${sessionId}.txt`);
+    res.setHeader("Content-Type", "text/plain");
+    res.send(transcript);
+});
+
+
+async function streamAIResponse(sessionMessages, io, sessionId) {
     const systemMessage = {
         role: "system",
         content: "Role:\n" +
@@ -52,7 +74,7 @@ async function streamAIResponse() {
 
     const messages = [
         systemMessage,
-        ...chatHistory.map(msg => ({
+        ...sessionMessages.map(msg => ({
             role: msg.sender === "AI Agent" ? "assistant" : "user",
             content: msg.content
         }))
@@ -66,44 +88,92 @@ async function streamAIResponse() {
 
     let fullText = "";
 
-    io.emit("ai-start");
+    io.to(sessionId).emit("ai-start");
 
     for await (const event of response) {
         if (event.type === "response.output_text.delta") {
             fullText += event.delta;
 
-            io.emit("ai-update", fullText);
+            io.to(sessionId).emit("ai-update", fullText);
         }
     }
 
-    io.emit("ai-end");
+    io.to(sessionId).emit("ai-end");
 
     return fullText;
 }
+
+
 io.on("connection", socket => {
     console.log(`User eal20: ${socket.id}`);
 
-    socket.on("chat message", async data => {
-        console.log("Message received:", data);
+    socket.on("join session", ({sessionId}) => {
+        if (!sessionId) {
+            sessionId = uuidv4();
+        }
 
-        chatHistory.push({ sender: data.sender, content: data.content })
+        if (!sessions[sessionId]) {
+            sessions[sessionId] = {
+                participants: {},
+                messages: [],
+                messagesSinceLastIntervention: 0
+            };
+        }
+
+        const session = sessions[sessionId];
+        const assignedId = colours[Object.keys(session.participants).length % colours.length];
+
+        session.participants[socket.id] = assignedId
+
+        socket.join(sessionId);
+
+        socket.emit("session joined", {
+            sessionId, username: assignedId
+        });
+    });
+
+    socket.on("chat message", async ({sessionId, content}) => {
+        console.log("Message received:", content);
+
+        const session = sessions[sessionId];
+        if (!session) return;
+
+        const sender = session.participants[socket.id];
+
+        const now = new Date();
+        const time =
+            now.getHours().toString().padStart(2, "0") + ":" +
+            now.getMinutes().toString().padStart(2, "0");
+
+        const message = {sender, content, timestamp: time};
+
+        // Store message
+        session.messages.push(message);
 
 
-        if (data.sender !== "AI Agent") {
-            messagesSinceLastIntervention++;
-            io.emit("chat message", data);
+        if (message.sender !== "AI Agent") {
+            session.messagesSinceLastIntervention++;
+            io.to(sessionId).emit("chat message", message);
 
-            if (messagesSinceLastIntervention >= AI_RESPONSE_THRESHOLD) {
+            if (session.messagesSinceLastIntervention >= AI_RESPONSE_THRESHOLD) {
                 try {
 
-                    const aiContent = await streamAIResponse(chatHistory, io);
+                    const aiContent = await streamAIResponse(session.messages, io, sessionId);
 
                     if (!aiContent) return;
 
-                    const aiMessage = { sender: "AI Agent", content: aiContent };
+                    const aiMessage = {
+                        sender: "AI Agent",
+                        content: aiContent,
+                        timestamp: new Date().toLocaleTimeString("en-GB", {
+                            hour: "2-digit",
+                            minute: "2-digit"
+                        })
+                    };
 
-                    chatHistory.push(aiMessage);
-                    messagesSinceLastIntervention = 0;
+                    session.messages.push(aiMessage);
+
+                    session.messagesSinceLastIntervention = 0;
                 } catch (err) {
                     console.error("Error generating AI response:", err);
                 }
