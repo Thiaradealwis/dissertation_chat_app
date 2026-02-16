@@ -68,6 +68,16 @@ export default function Chat() {
         };
     }, []);
 
+    useEffect(() => {
+        socket.on("chat history", (history: Message[]) => {
+            setMessages(history);
+        });
+
+        return () => {
+            socket.off("chat history");
+        };
+    }, []);
+
     const sendMessage = () => {
         if (!input.trim() || !username || !sessionId) return;
 

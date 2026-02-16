@@ -130,6 +130,10 @@ io.on("connection", socket => {
         socket.emit("session joined", {
             sessionId, username: assignedId
         });
+
+        if (session.messages.length > 0) {
+            socket.emit("chat history", session.messages);
+        }
     });
 
     socket.on("chat message", async ({sessionId, content}) => {
