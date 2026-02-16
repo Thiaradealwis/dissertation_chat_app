@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import socket from "../socket";
+import "./Chat.css";
 
 interface Message {
     sender: string;
@@ -70,29 +71,20 @@ export default function Chat() {
     const sendMessage = () => {
         if (!input.trim() || !username || !sessionId) return;
 
-        const msg: Message = {
-            sender: username,
-            content: input,
-            time: new Date().toLocaleTimeString("en-GB", {
-                hour: "2-digit",
-                minute: "2-digit"
-            })
-        };
-
         socket.emit("chat message", { sessionId, content: input });
         setInput("");
     };
 
     return (
-        <div className="flex flex-col h-screen p-4">
+        <div className="app-container">
             {sessionId && (
-                <div className="mt-2 text-sm text-gray-600">
+                <div className="join-link">
                     Share this link for others to join:
                     <code>{`${window.location.origin}?sessionId=${sessionId}`}</code>
                 </div>
             )}
             {/* Messages area */}
-            <div className="flex-1 overflow-y-auto border p-4 rounded bg-gray-50">
+            <div className="messages-container">
                 {messages.map((msg, i) => (
                     <div key={i} className="mb-2">
                         <strong>{msg.sender}: </strong>
@@ -109,38 +101,42 @@ export default function Chat() {
             </div>
 
             {/* Message input */}
-            <div className="mt-4 flex gap-2">
-                {username && (
-                    <div className={`mb-2 font-bold ${colourMap[username]}`}>
-                        You are: {username}
-                    </div>
-                )}
-                <input
-                    type="text"
-                    placeholder="Type a message..."
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    className="border p-2 rounded flex-1"
-                    disabled={!username}
-                    onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-                />
-                <button
-                    onClick={sendMessage}
-                    className="bg-blue-600 text-yellow px-4 py-2 rounded disabled:opacity-50"
-                    disabled={!username}
-                >
-                    Send
-                </button>
-                <button
-                    onClick={() => {
-                        if (sessionId) {
-                            window.open(`http://localhost:4000/transcript/${sessionId}`);
-                        }
-                    }}
-                    className="bg-gray-600 text-white px-4 py-2 rounded"
-                >
-                    Download Transcript
-                </button>
+            <div className="control-container">
+                <div className="user-control">
+                    {username && (
+                        <div className={`mb-2 font-bold ${colourMap[username]}`}>
+                            You are: {username}
+                        </div>
+                    )}
+                    <input
+                        type="text"
+                        placeholder="Type a message..."
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        className="message-input"
+                        disabled={!username}
+                        onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+                    />
+                </div>
+                <div className="button-control">
+                    <button
+                        onClick={sendMessage}
+                        className="send-message"
+                        disabled={!username}
+                    >
+                        Send
+                    </button>
+                    <button
+                        onClick={() => {
+                            if (sessionId) {
+                                window.open(`http://localhost:4000/transcript/${sessionId}`);
+                            }
+                        }}
+                        className="download-button"
+                    >
+                        Download Transcript
+                    </button>
+                </div>
             </div>
         </div>
     );

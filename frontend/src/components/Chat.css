@@ -1,0 +1,51 @@
+.app-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    flex: 1;
+}
+
+.join-link {
+    background-color: cadetblue;   /* dark gray */
+    color: white;
+    padding: 1rem;
+    font-size: 1.2rem;
+    text-align: center;
+    flex-shrink: 0;
+    border-radius: 1em;
+    margin:1em;
+}
+
+.messages-container{
+    flex: 1;
+    overflow-y: scroll;
+    padding: 1rem;
+    background-color: #f9f9f9;
+    display: flex;
+    flex-direction: column;
+    align-items: start;
+    justify-content: end;
+    font-size: 1.2rem;
+}
+
+.input-area {
+    padding: 0.5rem;
+    border-top: 1px solid #ccc;
+}
+
+.control-container {
+    border-top: cadetblue solid 0.5em;
+    padding: 1em;
+    margin-bottom: 10em;
+    display: flex;
+    flex-direction: column;
+    align-items: start;
+    gap: 1em;
+}
+
+.user-control {
+    font-size: 1.5em;
+    display: flex;
+    flex-direction: row;
+    gap: 1em;
+}
