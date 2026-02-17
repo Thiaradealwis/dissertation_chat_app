@@ -5,7 +5,7 @@ const { v4: uuidv4 } = require("uuid");
 // server/index.js
 const express = require("express");
 const http = require("http");
-import { createServer } from 'http';
+const { createServer } = require('http');
 const { Server } = require("socket.io");
 const cors = require("cors");
 const OpenAI = require("openai")
