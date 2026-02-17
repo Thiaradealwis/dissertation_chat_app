@@ -20,7 +20,7 @@ app.use(cors({
 
 const io = new Server(server, {
     cors: {
-        origin: "http://diss-chat-frontend.s3-website.eu-north-1.amazonaws.co",
+        origin: "http://diss-chat-frontend.s3-website.eu-north-1.amazonaws.com",
         methods: ["GET", "POST"]
     }
 });
