@@ -13,14 +13,16 @@ const OpenAI = require("openai")
 const app = express();
 const server = createServer(app);
 app.use(cors({
-    origin: 'http://diss-chat-frontend.s3-website.eu-north-1.amazonaws.com', // allow S3 frontend
+    //origin: 'http://diss-chat-frontend.s3-website.eu-north-1.amazonaws.com', // allow S3 frontend
+    origin: "http://localhost:5173",
     methods: ['GET','POST'],
     credentials: true
 }));
 
 const io = new Server(server, {
     cors: {
-        origin: "http://diss-chat-frontend.s3-website.eu-north-1.amazonaws.com",
+        //origin: "http://diss-chat-frontend.s3-website.eu-north-1.amazonaws.com",
+        origin: "http://localhost:5173",
         methods: ["GET", "POST"]
     }
 });
@@ -67,6 +69,7 @@ async function streamAIResponse(sessionMessages, io, sessionId) {
             "Goal:\n" +
             "Facilitate the conversation so everyone’s ideas are considered. Focus on Equal Participation, Evaluation of Information brought up, Evidence Based opinions, exploratory discussion adn sharing of information. Do not recommend decisions or provide your own opinions.\n\n" +
             "Style:\n" +
+            "- Please refer to other members of the conversation using their sender ID" +
             "- Keep responses very short (1–2 sentences max).\n" +
             "- Use casual, friendly, conversational language.\n" +
             "- Ask clarifying questions instead of giving long instructions.\n" +
@@ -81,7 +84,7 @@ async function streamAIResponse(sessionMessages, io, sessionId) {
         systemMessage,
         ...sessionMessages.map(msg => ({
             role: msg.sender === "AI Agent" ? "assistant" : "user",
-            content: msg.content
+            content: `${msg.sender}: ${msg.content}`
         }))
     ];
 
