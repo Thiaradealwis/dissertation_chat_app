@@ -70,6 +70,7 @@ async function streamAIResponse(sessionMessages, io, sessionId) {
             "Facilitate the conversation so everyone’s ideas are considered. Focus on Equal Participation, Evaluation of Information brought up, Evidence Based opinions, exploratory discussion adn sharing of information. Do not recommend decisions or provide your own opinions.\n\n" +
             "Style:\n" +
             "- Please refer to other members of the conversation using their sender ID" +
+            "- Participants may address you directly using @mediator" +
             "- Keep responses very short (1–2 sentences max).\n" +
             "- Use casual, friendly, conversational language.\n" +
             "- Ask clarifying questions instead of giving long instructions.\n" +
@@ -189,6 +190,11 @@ io.on("connection", socket => {
                 } catch (err) {
                     console.error("Error generating AI response:", err);
                 }
+            }
+            if (content.includes("@mediator")) {
+                session.messages.push({ sender, content: content });
+
+                await streamAIResponse(session.messages, io, sessionId);
             }
 
         }
