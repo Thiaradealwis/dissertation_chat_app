@@ -1,17 +1,43 @@
 //initial code from https://www.djamware.com/post/68a6a3707c93f30ea29f62ac/build-a-realtime-chat-app-with-react-nodejs-and-socketio#create-project
-require("dotenv").config();
-const { v4: uuidv4 } = require("uuid");
+import AWS from "aws-sdk";
+import { OpenAI } from "openai";
+import dotenv from "dotenv";
+
+
+dotenv.config();
+AWS.config.update({ region: "eu-north-1" });
+
+const secretsClient = new AWS.SecretsManager();
+
+async function getOpenAIKey() {
+
+    if (process.env.OPENAI_API_KEY) {
+        console.log("Using OpenAI key from .env");
+        return process.env.OPENAI_API_KEY;
+    }
+
+    const data = await secretsClient.getSecretValue({
+        SecretId: "openAI_key"
+    }).promise();
+
+    if ("SecretString" in data) {
+        const secret = JSON.parse(data.SecretString);
+        return secret.OPENAI_API_KEY;
+    } else {
+        throw new Error("Secret binary format not supported");
+    }
+}
+import { v4 as uuidv4 } from "uuid";
 
 // server/index.js
-const express = require("express");
-const http = require("http");
-const { createServer } = require('http');
-const { Server } = require("socket.io");
-const cors = require("cors");
-const OpenAI = require("openai")
+import express from "express";
+import http from "http";
+import { Server } from "socket.io";
+import cors from "cors";
+
 
 const app = express();
-const server = createServer(app);
+const server = http.createServer(app);
 app.use(cors({
     origin: 'http://diss-chat-frontend.s3-website.eu-north-1.amazonaws.com', // allow S3 frontend
     //origin: "http://localhost:5173",
@@ -27,7 +53,8 @@ const io = new Server(server, {
     }
 });
 
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const apiKey = await getOpenAIKey();
+const client = new OpenAI({ apiKey });
 const AI_RESPONSE_THRESHOLD = 3;
 
 const sessions = {};
