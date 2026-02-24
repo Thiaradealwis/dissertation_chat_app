@@ -139,7 +139,7 @@ export default function Chat() {
                     <button
                         onClick={() => {
                             if (sessionId) {
-                                window.open(`http://localhost:4000/transcript/${sessionId}`);
+                                window.open(`http://13.62.133.82:4000/transcript/${sessionId}`);
                             }
                         }}
                         className="download-button"
