@@ -1,7 +1,14 @@
 //initial code from https://www.djamware.com/post/68a6a3707c93f30ea29f62ac/build-a-realtime-chat-app-with-react-nodejs-and-socketio#create-project
 import AWS from "aws-sdk";
-import { OpenAI } from "openai";
+import {OpenAI} from "openai";
 import dotenv from "dotenv";
+import {v4 as uuidv4} from "uuid";
+
+// server/index.js
+import express from "express";
+import http from "http";
+import {Server} from "socket.io";
+import cors from "cors";
 
 
 dotenv.config();
@@ -22,18 +29,11 @@ async function getOpenAIKey() {
 
     if ("SecretString" in data) {
         const secret = JSON.parse(data.SecretString);
-        return secret.OPENAI_API_KEY;
+        return secret["Key: OPENAI_API_KEY"].replace("Value: ", "");
     } else {
         throw new Error("Secret binary format not supported");
     }
 }
-import { v4 as uuidv4 } from "uuid";
-
-// server/index.js
-import express from "express";
-import http from "http";
-import { Server } from "socket.io";
-import cors from "cors";
 
 
 const app = express();
