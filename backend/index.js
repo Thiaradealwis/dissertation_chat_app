@@ -13,16 +13,16 @@ const OpenAI = require("openai")
 const app = express();
 const server = createServer(app);
 app.use(cors({
-    //origin: 'http://diss-chat-frontend.s3-website.eu-north-1.amazonaws.com', // allow S3 frontend
-    origin: "http://localhost:5173",
+    origin: 'http://diss-chat-frontend.s3-website.eu-north-1.amazonaws.com', // allow S3 frontend
+    //origin: "http://localhost:5173",
     methods: ['GET','POST'],
     credentials: true
 }));
 
 const io = new Server(server, {
     cors: {
-        //origin: "http://diss-chat-frontend.s3-website.eu-north-1.amazonaws.com",
-        origin: "http://localhost:5173",
+        origin: "http://diss-chat-frontend.s3-website.eu-north-1.amazonaws.com",
+        //origin: "http://localhost:5173",
         methods: ["GET", "POST"]
     }
 });
