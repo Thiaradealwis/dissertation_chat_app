@@ -118,7 +118,7 @@ async function streamAIResponse(sessionMessages, io, sessionId) {
 
     const response = await client.responses.stream({
         model: "gpt-5-mini",
-        input: messages,
+        input: messages
 
     });
 
@@ -170,6 +170,12 @@ io.on("connection", socket => {
         if (session.messages.length > 0) {
             socket.emit("chat history", session.messages);
         }
+    });
+
+    socket.on('typing', ({ sessionId, username, isTyping, roomId }) => {
+        // Broadcast to everyone else in the room
+        console.log('typing receieved');
+        socket.to(sessionId).emit('userTyping', { username, isTyping });
     });
 
     socket.on("chat message", async ({sessionId, content}) => {

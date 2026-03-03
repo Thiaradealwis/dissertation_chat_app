@@ -23,7 +23,7 @@
     padding: 1rem;
     background-color: #f9f9f9;
     display: flex;
-    flex-direction: column;
+    flex-direction: column-reverse;
     align-items: start;
     font-size: 1.2rem;
 }

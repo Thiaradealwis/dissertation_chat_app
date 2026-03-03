@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, type SetStateAction} from "react";
 import socket from "../socket";
 import "./Chat.css";
 
@@ -15,6 +15,9 @@ export default function Chat() {
     const [username, setUsername] = useState("");
     const [isTyping, setIsTyping] = useState(false);
     const [sessionId, setSessionId] = useState<string | null>(null);
+    const [typingUsers, setTypingUsers] = useState(new Set());
+    const [isUserTyping, setIsUserTyping] = useState(false);
+    const typingTimeout = useRef(null);
 
     const colourMap: { [key: string]: string } = {
         Red: "text-red-600",
@@ -22,6 +25,41 @@ export default function Chat() {
         Green: "text-green-600",
         Yellow: "text-yellow-600",
     };
+
+    const handleInputChange = (e: { target: { value: SetStateAction<string>; }; }) => {
+        console.log("handleInputChange fired");
+        setInput(e.target.value);
+
+        console.log("Local typing detected");
+
+        if (!isUserTyping) {
+            setIsUserTyping(true);
+            socket.emit('typing', { sessionId: sessionId, username, isTyping: true });
+            console.log("Emit typing: true");
+        }
+
+        if (typingTimeout.current) clearTimeout(typingTimeout.current);
+
+        // @ts-ignore
+        typingTimeout.current = setTimeout(() => {
+            setIsUserTyping(false);
+            socket.emit('typing', { sessionId: sessionId, username, isTyping: false });
+        }, 1000); // 1 second idle → stopped typing
+    };
+
+    // @ts-ignore
+    useEffect(() => {
+        socket.on('userTyping', ({ username: user, isTyping }) => {
+            setTypingUsers((prev) => {
+                const newSet = new Set(prev);
+                if (isTyping) newSet.add(user);
+                else newSet.delete(user);
+                return newSet;
+            });
+        });
+
+        return () => socket.off('userTyping');
+    }, []);
 
     useEffect(() => {
         // Get sessionId from URL query params
@@ -95,6 +133,18 @@ export default function Chat() {
             )}
             {/* Messages area */}
             <div className="messages-container">
+                {isTyping && (
+                    <div className="italic text-gray-500 mt-2">
+                        AI Agent is typing...
+                    </div>
+                )}
+                <div className="typing-indicator">
+                    {typingUsers.size > 0 && (
+                        <span>
+      {[...typingUsers].join(', ')} {typingUsers.size === 1 ? 'is' : 'are'} typing...
+    </span>
+                    )}
+                </div>
                 {messages.map((msg, i) => (
                     <div key={i} className="mb-2">
                         <strong>{msg.sender}: </strong>
@@ -103,11 +153,6 @@ export default function Chat() {
                     </div>
                 ))}
 
-                {isTyping && (
-                    <div className="italic text-gray-500 mt-2">
-                        AI Agent is typing...
-                    </div>
-                )}
             </div>
 
             {/* Message input */}
@@ -120,9 +165,10 @@ export default function Chat() {
                     )}
                     <input
                         type="text"
+                        id="chat-input"
                         placeholder="Type a message..."
                         value={input}
-                        onChange={(e) => setInput(e.target.value)}
+                        onChange={handleInputChange}
                         className="message-input"
                         disabled={!username}
                         onKeyDown={(e) => e.key === "Enter" && sendMessage()}
