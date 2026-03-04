@@ -76,20 +76,20 @@ export default function Chat() {
 
         // Listen for messages
         socket.on("chat message", (msg: Message) => {
-            setMessages((prev) => [...prev, msg]);
+            setMessages((prev) => [msg, ...prev]);
         });
 
         socket.on("ai-start", () => {
             setIsTyping(true);
-            setMessages((prev) => [...prev, { sender: "AI Agent", content: "" }]);
+            setMessages((prev) => [{ sender: "AI Agent", content: "" }, ...prev]);
         });
 
         socket.on("ai-update", (text: string) => {
             setMessages((prev) => {
                 const updated = [...prev];
-                const last = updated[updated.length - 1];
-                if (last?.sender === "AI Agent") {
-                    last.content = text;
+                const first = updated[0];
+                if (first?.sender === "AI Agent") {
+                    updated[0] = { ...first, content: text };
                 }
                 return updated;
             });
