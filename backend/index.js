@@ -55,7 +55,7 @@ const io = new Server(server, {
 
 const apiKey = await getOpenAIKey();
 const client = new OpenAI({ apiKey });
-const AI_RESPONSE_THRESHOLD = 10;
+const AI_RESPONSE_THRESHOLD = 6;
 
 const sessions = {};
 const colours = [
