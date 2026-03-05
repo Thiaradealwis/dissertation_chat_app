@@ -3,13 +3,10 @@ import AWS from "aws-sdk";
 import {OpenAI} from "openai";
 import dotenv from "dotenv";
 import {v4 as uuidv4} from "uuid";
-
-// server/index.js
 import express from "express";
 import http from "http";
 import {Server} from "socket.io";
 import cors from "cors";
-
 
 dotenv.config();
 AWS.config.update({ region: "eu-north-1" });
@@ -35,11 +32,10 @@ async function getOpenAIKey() {
     }
 }
 
-
 const app = express();
 const server = http.createServer(app);
 app.use(cors({
-    origin: 'http://diss-chat-frontend.s3-website.eu-north-1.amazonaws.com', // allow S3 frontend
+    origin: 'http://diss-chat-frontend.s3-website.eu-north-1.amazonaws.com', // S3 frontend
     //origin: "http://localhost:5173",
     methods: ['GET','POST'],
     credentials: true
@@ -107,20 +103,32 @@ async function streamAIResponse(sessionMessages, io, sessionId) {
 
 
     };
+    const session = sessions[sessionId];
 
-    const messages = [
-        systemMessage,
-        ...sessionMessages.map(msg => ({
-            role: msg.sender === "AI Agent" ? "assistant" : "user",
-            content: `${msg.sender}: ${msg.content}`
-        }))
-    ];
+    const newMessages = session.messages.slice(session.lastHandledIndex);
+    session.lastHandledIndex = session.messages.length;
+    const userContent = newMessages
+        .map(msg => `${msg.sender}: ${msg.content}`)
+        .join("\n");
 
-    const response = await client.responses.stream({
-        model: "gpt-5-mini",
-        input: messages
-
-    });
+    let response;
+    if (!session.lastResponseId) {
+        // First AI intervention — send system + all new messages
+        response = await client.responses.stream({
+            model: "gpt-5-mini",
+            input: [
+                systemMessage,
+                { role: "user", content: userContent }
+            ]
+        });
+    } else {
+        // Subsequent AI interventions — continue conversation using conversation state
+        response = await client.responses.stream({
+            model: "gpt-5-mini",
+            previous_response_id: session.lastResponseId,
+            input: userContent
+        });
+    }
 
     let fullText = "";
 
@@ -131,6 +139,9 @@ async function streamAIResponse(sessionMessages, io, sessionId) {
             fullText += event.delta;
 
             io.to(sessionId).emit("ai-update", fullText);
+        }
+        if (event.type === "response.completed") {
+            session.lastResponseId = event.response.id;
         }
     }
 
@@ -152,7 +163,9 @@ io.on("connection", socket => {
             sessions[sessionId] = {
                 participants: {},
                 messages: [],
-                messagesSinceLastIntervention: 0
+                messagesSinceLastIntervention: 0,
+                lastResponseId: null,
+                lastHandledIndex: 0
             };
         }
 
@@ -174,7 +187,7 @@ io.on("connection", socket => {
 
     socket.on('typing', ({ sessionId, username, isTyping, roomId }) => {
         // Broadcast to everyone else in the room
-        console.log('typing receieved');
+        console.log('typing received');
         socket.to(sessionId).emit('userTyping', { username, isTyping });
     });
 
